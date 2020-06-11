@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: csgit-apps-route-template
+  annotations:
+    description: CSG IT basic route template on Openshift
+    tags: csgit
+    haproxy.router.openshift.io/disable_cookies: "true"
+    haproxy.router.openshift.io/balance: "leastconn"
+    haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "5"
+    haproxy.router.openshift.io/rate-limit-connections.rate-tcp: "3"
+    haproxy.router.openshift.io/rate-limit-connections: "true"
+    haproxy.router.openshift.io/rate-limit-connections.rate-http: "3"
+    haproxy.router.openshift.io/timeout: "5000"
+    haproxy.router.openshift.io/hsts_header: "max-age=10368000; includeSubDomains"    
+labels:
+  template: csgit-apps-route-template
+objects:
+  - apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+      labels:
+        provider: s2i
+        appname: '${APP_NAME}'
+        appversion: '${APP_FULL_VERSION}'
+        majorversion: '${APP_MAJOR_VERSION}'
+        buildnumber: ${JENKINS_BUILD_NUMBER}
+        gitcommitid: ${GIT_COMMIT_ID}
+      name: '${APP_NAME}-v${APP_MAJOR_VERSION}'
+    spec:
+      host: ${PUBLIC_ROUTE_PREFIX}.apps.jijiechen.com
+      path: ${APP_ROUTE_PATH}
+      tls:
+        # TODO: discuss to have Redirect or None
+        insecureEdgeTerminationPolicy: Redirect
+        termination: edge
+      to:
+        kind: Service
+        name: '${APP_NAME}-v${APP_MAJOR_VERSION}'
+        weight: 100
+      wildcardPolicy: None
+parameters:
+  - name: APP_NAME
+    displayName: Application Name
+    description: The name assigned to the application.
+    required: true
+  - name: APP_MAJOR_VERSION
+    displayName: Application Major Version
+    description: The application major version from the pom version tag e.g. 1 for 1.0.0-SNAPSHOT.
+  - name: APP_FULL_VERSION
+    displayName: RAW app version
+    description: RAW app version e.g. 1.0
+    required: true
+  - name: GIT_COMMIT_ID
+    displayName: GIT Commit ID
+    description: GIT Commit ID from Jenkins
+    required: true
+  - name: JENKINS_BUILD_NUMBER
+    displayName: Jenkins Build Number
+    description: Jenkins Build Number
+    required: true
+  - name: PUBLIC_ROUTE_PREFIX
+    displayName: Route Prefix
+    description: Route prefix for the public service
+    required: true
+  - name: INSECURE_EDGE_TERMINATION
+    displayName: Insecure edge terminatin policy 
+    description: Insecure edge terminatin policy 
+    required: false
+    value: None
+  - name: APP_ROUTE_PATH
+    description: Application paht on which OCP will serve the traffic  
+    displayName: Application Path for the Route 
+    required: false
+    value: "/"

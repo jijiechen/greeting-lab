@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Template
+labels:
+  template: csgit-apps-build-template
+metadata:
+  annotations:
+    description: CSG IT basic build config template on Openshift
+    tags: csgit
+  name: csgit-apps-build-template
+objects:
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        appname: ${APP_NAME}
+        provider: s2i
+        majorversion: ${APP_MAJOR_VERSION}
+      name: ${APP_NAME}-v${APP_MAJOR_VERSION}
+    spec:
+      tags:
+        - name: ${APP_FULL_VERSION}
+
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      labels:
+        appname: ${APP_NAME}
+        provider: s2i
+        version: ${APP_FULL_VERSION}
+        majorversion: ${APP_MAJOR_VERSION}
+        buildnumber: ${JENKINS_BUILD_NUMBER}
+        gitcommitid: ${GIT_COMMIT_ID}
+      name: ${APP_NAME}-v${APP_MAJOR_VERSION}
+    spec:
+      source:
+        binary:
+        type: "Binary"
+      strategy:
+        type: Source  
+        sourceStrategy:
+          env:
+            - name: BUILD_LOGLEVEL
+              value: "8"
+          from:
+            kind: ImageStreamTag
+            name: ${S2I_BUILD_IMAGE}
+      output:
+        to:
+          kind: ImageStreamTag
+          name: ${APP_NAME}-v${APP_MAJOR_VERSION}:${APP_FULL_VERSION}
+        imageLabels:
+          - name: appname
+            value: ${APP_NAME}
+          - name: version
+            value: ${APP_FULL_VERSION}
+          - name: majorversion
+            value: ${APP_MAJOR_VERSION}
+          - name: buildnumber
+            value: ${JENKINS_BUILD_NUMBER}
+          - name: gitcommitid
+            value: ${GIT_COMMIT_ID}
+parameters:
+  - description: The name assigned to the application.
+    displayName: Application Name
+    name: APP_NAME
+    required: true
+  - name: APP_FULL_VERSION
+    displayName: RAW app version
+    description: RAW app version e.g. 1.0.0
+    required: true
+  - name: APP_MAJOR_VERSION
+    displayName: Application Major Version
+    description: The application major version from the pom version tag e.g. 1 for 1.0.0
+    required: true
+  - name: JENKINS_BUILD_NUMBER
+    displayName: Jenkins Build Number
+    description: Jenkins Build Number
+    required: true
+  - name: GIT_COMMIT_ID
+    displayName: GIT Commit ID
+    description: GIT Commit ID from Jenkins
+    required: true
+  - name: S2I_BUILD_IMAGE
+    displayName: S2I Builder Image Name
+    description: The Builder image to use for building this application
+    required: true
